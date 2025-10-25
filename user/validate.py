@@ -1,5 +1,5 @@
 import os
-import pytest 
+import pytest
 import skvideo
 import skvideo.io
 from loguru import logger
@@ -35,12 +35,12 @@ except Exception:
         client = _get_sb_client()
         client.table("ai2_leaderboard").update({"validation_status": status}).eq("username", username).execute()
 
-@pytest.mark.timeout(60) 
+@pytest.mark.timeout(60)
 def test_agent_validation():
     username = os.getenv("USERNAME")
-    create_participant(username)
+    # create_participant(username)
     logger.info("Warming up your agent ...")
-    my_agent = SubmittedAgent() 
+    my_agent = SubmittedAgent()
     logger.info("Warming up your opponent's agent ...")
     opponent = ConstantAgent()
     match_time = 90
@@ -56,6 +56,5 @@ def test_agent_validation():
             max_timesteps=30 * match_time,
             train_mode=True
             )
-    update_validation_status(username, True)
+    # update_validation_status(username, True)
     logger.info("Validation match has completed successfully! Your agent is ready for battle!")
-
