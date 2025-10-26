@@ -538,19 +538,157 @@ def on_combo_reward(env: WarehouseBrawl, agent: str) -> float:
     else:
         return 1.0
 
+def smart_attack_reward(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+
+    dx = player.body.position.x - opponent.body.position.x
+    dy = player.body.position.y - opponent.body.position.y
+    distance = math.sqrt(dx**2 + dy**2)
+
+    is_attacking = isinstance(player.state, AttackState)
+    if is_attacking and distance < 2.0:
+        return 0.5 * env.dt
+    elif is_attacking and distance > 4.0:
+        return -0.3 * env.dt
+    return 0.0
+
+def platform_centering_reward(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+
+    if player.on_platform is None:
+        return 0.0
+
+    platform = player.on_platform.owner
+    dx = player.body.position.x - platform.body.position.x
+
+    reward = -abs(dx) * 0.1 + 0.05
+
+    return reward * env.dt
+
+def moving_platform_exit_reward(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+
+    if not hasattr(player, "previous_platform_name"):
+        player.previous_platform_name = None
+
+    current_platform = None
+    if player.on_platform is not None and hasattr(player.on_platform, "owner"):
+        platform = player.on_platform.owner
+        current_platform = getattr(platform, "name", None)
+
+    reward = 0.0
+
+    if (
+        player.previous_platform_name == "platform1"
+        and current_platform in ("ground1", "ground2")
+        and player.body.position.y > 0.5
+    ):
+        reward = 1.0 * env.dt
+
+    player.previous_platform_name = current_platform
+
+    return reward
+
+def unsafe_attack_penalty(env: WarehouseBrawl) -> float:
+    """
+    Strongly penalize any downward attack while airborne above the gap.
+    """
+    player: Player = env.objects["player"]
+
+    airborne = player.on_platform is None
+    over_void = abs(player.body.position.x) < 3.0
+    attacking = isinstance(player.state, AttackState)
+    descending = player.body.velocity.y > 0.0  # falling
+
+    if airborne and over_void and attacking and descending:
+        return -5.0 * env.dt  # brutal penalty
+    return 0.0
+
+def weapon_hold_reward(env: WarehouseBrawl) -> float:
+    """
+    Strongly penalize dropping a weapon and slightly reward holding one.
+    This encourages the agent to keep its weapon equipped at all times.
+    """
+    player: Player = env.objects["player"]
+    weapon = getattr(player, "weapon", None)
+
+    # If unarmed (Punch), penalize strongly
+    if weapon == "Punch":
+        return -2.0 * env.dt
+
+    # If armed (Spear, Hammer, etc.), give a small constant reward
+    elif weapon in ["Spear", "Hammer"]:
+        return 0.2 * env.dt
+
+    return 0.0
+
+def survival_reward(env: WarehouseBrawl) -> float:
+    """
+    Reward the agent slightly for every frame it remains alive and not falling.
+    Penalize if it gets knocked out or falls too fast.
+    """
+    player: Player = env.objects["player"]
+
+    # Check if player is in a knockout state
+    is_knocked_out = isinstance(player.state, KOState)
+
+    # General safety heuristics
+    safe_height = player.body.position.y < 5.0
+    not_falling = player.body.velocity.y < 5.0
+
+    if not is_knocked_out and safe_height and not_falling:
+        return 0.5 * env.dt  # reward survival and stability
+    else:
+        return -1.0 * env.dt  # penalize falling or being KO'd
+
+def edge_avoidance_reward(env: WarehouseBrawl) -> float:
+    """
+    Penalize moving too close to the map edges or central gap.
+    This prevents the agent from overshooting platforms.
+    """
+    player: Player = env.objects["player"]
+    x = player.body.position.x
+    y = player.body.position.y
+
+    # The middle "void" area: ~|x| < 3
+    if abs(x) < 3.0 and y > -1.0:
+        return -1.5 * env.dt
+
+    # The far sides (risk of walking off map)
+    if abs(x) > 9.0:
+        return -2.0 * env.dt
+
+    return 0.2 * env.dt  # small reward for being in safe central zones of platform
+
+def death_penalty(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+    # KOState means the player has fallen or been killed
+    if isinstance(player.state, KOState):
+        return -50.0  # huge penalty for dying
+    return 0.0
+
+
 '''
 Add your dictionary of RewardFunctions here using RewTerms
 '''
 def gen_reward_manager():
     reward_functions = {
-        #'target_height_reward': RewTerm(func=base_height_l2, weight=0.0, params={'target_height': -4, 'obj_name': 'player'}),
-        'danger_zone_reward': RewTerm(func=danger_zone_reward, weight=0.5),
-        'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
+        # 'target_height_reward': RewTerm(func=base_height_l2, weight=0.0, params={'target_height': -4, 'obj_name': 'player'}),
+        # 'danger_zone_reward': RewTerm(func=danger_zone_reward, weight=0.5),
+        # 'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
         #'head_to_middle_reward': RewTerm(func=head_to_middle_reward, weight=0.01),
-        #'head_to_opponent': RewTerm(func=head_to_opponent, weight=0.05),
-        'penalize_attack_reward': RewTerm(func=in_state_reward, weight=-0.04, params={'desired_state': AttackState}),
-        'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.01),
+        # 'head_to_opponent': RewTerm(func=head_to_opponent, weight=0.05),
+        # 'penalize_attack_reward': RewTerm(func=in_state_reward, weight=-0.04, params={'desired_state': AttackState}),
+        # 'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.01),
         #'taunt_reward': RewTerm(func=in_state_reward, weight=0.2, params={'desired_state': TauntState}),
+        # 'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=0.6),
+        'platform_centering_reward': RewTerm(func=platform_centering_reward, weight=0.4),
+        # 'moving_platform_exit_reward': RewTerm(func=moving_platform_exit_reward, weight=0.8),
+        'unsafe_attack_penalty': RewTerm(func=unsafe_attack_penalty, weight=1.0),
+        # 'weapon_hold_reward': RewTerm(func=weapon_hold_reward, weight=1.0),
+        'survival_reward': RewTerm(func=survival_reward, weight=1.0),
+        # 'edge_avoidance_reward': RewTerm(func=edge_avoidance_reward, weight=1.0),
     }
     signal_subscriptions = {
         'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=50)),
@@ -591,7 +729,7 @@ if __name__ == '__main__':
         save_freq=100_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_9',
+        run_name='experiment_survival',
         mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
     )
 
@@ -608,6 +746,7 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=1_000_000_000,
+        train_timesteps=300_000,
+        # train_timestamps=1_000_000_000,
         train_logging=TrainLogging.PLOT
     )
