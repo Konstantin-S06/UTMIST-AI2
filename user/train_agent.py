@@ -602,7 +602,7 @@ def combo_reward(env: WarehouseBrawl) -> float:
         player.combo_hits = 0
         player.combo_damage = 0.0
         player.last_hit_frame = -100
-    
+
     reward = 0.0
     current_frame = env.steps
     frames_since_last_hit = current_frame - player.last_hit_frame
@@ -639,6 +639,18 @@ def combo_reward(env: WarehouseBrawl) -> float:
         player.combo_damage = 0.0
     
     return reward * env.dt
+
+def recovery_reward(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+
+    y_pos = player.body.position.y
+    y_vel = player.body.velocity.y
+
+    if 2.85 < y_pos:
+        if y_vel > 0:
+            return -30.0 * env.dt
+
+    return 0.0
 
 def string_reward(env: WarehouseBrawl) -> float:
     """
@@ -911,7 +923,7 @@ def win_reward(env: WarehouseBrawl) -> float:
     opponent: Player = env.objects["opponent"]
     
     if opponent.stocks == 0:
-        return 100000.0
+        return 1000 * env.dt
     return 0.0
 
 def check_stocks(env: WarehouseBrawl) -> float:
@@ -932,6 +944,7 @@ Add your dictionary of RewardFunctions here using RewTerms
 '''
 def gen_reward_manager():
     reward_functions = {
+        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
         'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
@@ -992,7 +1005,7 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=1_000, # Save frequency
+        save_freq=10_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
         run_name='experiment_test',
