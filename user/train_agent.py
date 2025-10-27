@@ -48,7 +48,7 @@ class SB3Agent(Agent):
 
     def _initialize(self) -> None:
         if self.file_path is None:
-            self.model = self.sb3_class("MlpPolicy", self.env, verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.005)
+            self.model = self.sb3_class("MlpPolicy", self.env, verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.01)
             del self.env
         else:
             self.model = self.sb3_class.load(self.file_path)
@@ -104,7 +104,7 @@ class RecurrentPPOAgent(Agent):
                                       verbose=0,
                                       n_steps=30*90*20,
                                       batch_size=16,
-                                      ent_coef=0.005,
+                                      ent_coef=0.01,
                                       policy_kwargs=policy_kwargs)
             del self.env
         else:
@@ -308,7 +308,7 @@ class CustomAgent(Agent):
 
     def _initialize(self) -> None:
         if self.file_path is None:
-            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.005)
+            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.01)
             del self.env
         else:
             self.model = self.sb3_class.load(self.file_path)
@@ -875,7 +875,7 @@ def punish_window_reward(env: WarehouseBrawl) -> float:
 
 def survival_reward(env: WarehouseBrawl) -> float:
     player: Player = env.objects["player"]
-    if player.is_alive:
+    if player.stocks > 0:
         return 1.0 * env.dt  # small positive reward every frame alive
     return 0.0
 
@@ -1012,6 +1012,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=10_000,
+        train_timesteps=40_000,
         train_logging=TrainLogging.PLOT
     )
