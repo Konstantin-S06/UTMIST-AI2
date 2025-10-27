@@ -5,8 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3aa24987-2ad7-446a-9819-a3a3e8ca488e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/UTMIST-AI2-2025.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/UTMIST-AI2-2025.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/user/demo_match.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/demo_match.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/user/train_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/train_agent.py" afterDir="false" />
@@ -27,17 +25,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.Train Agent.executor&quot;: &quot;Run&quot;,
-    &quot;Python.train_agent.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;mihir/local-validation-fix&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/moham/Documents/GitHub/UTMIST-AI2-2025&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.Train Agent.executor": "Run",
+    "Python.train_agent.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "mihir/reward-experiments-dont-merge",
+    "last_opened_file_path": "C:/Users/moham/Documents/GitHub/UTMIST-AI2-2025",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="Train Agent" type="PythonConfigurationType" factoryName="Python">
       <module name="UTMIST-AI2-2025" />
