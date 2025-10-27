@@ -525,10 +525,33 @@ def smart_attack_reward(env: WarehouseBrawl) -> float:
 
     if is_attacking and distance < 1.0:
         if isinstance(opponent.state, StunState):
-            return 60.0 * env.dt
+            return 30.0 * env.dt
     elif is_attacking and distance > 2.0:
         return -15.0 * env.dt
     return 0.0
+
+def attack_right_direction_reward(env: WarehouseBrawl) -> float:
+    """Reward attacking toward the opponent."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+
+    dx = opponent.body.position.x - player.body.position.x
+    dy = opponent.body.position.y - player.body.position.y
+    is_attacking = isinstance(player.state, AttackState)
+
+    if dx >= 0 and player.facing == Facing.RIGHT and is_attacking:
+        if dy < 0.2 and player.state.move_type in [MoveType.NAIR, MoveType.NSIG, MoveType.NLIGHT]:
+            return 10.0 * env.dt
+        elif abs(dy) < 0.2 and player.state.move_type in [MoveType.SLIGHT, MoveType.SSIG, MoveType.SAIR]:
+            return 10.0 * env.dt
+    elif dx < 0 and player.facing == Facing.LEFT and is_attacking:
+        if dy < 0.2 and player.state.move_type in [MoveType.NAIR, MoveType.NSIG, MoveType.NLIGHT]:
+            return 10.0 * env.dt
+        elif abs(dy) < 0.2 and player.state.move_type in [MoveType.SLIGHT, MoveType.SSIG, MoveType.SAIR]:
+            return 10.0 * env.dt
+    return 0.0
+
+    
 
 
 def jump_recovery_reward(env: WarehouseBrawl) -> float:
@@ -563,7 +586,7 @@ def spike_reward(env: WarehouseBrawl) -> float:
     # If our player is directly above opponent
     if (abs(xp-xo) < 1) and (yp < yo):
         # If using ground pound
-        if (isinstance(player.state, AttackState) and player.state.move_type == MoveType.GROUNDPOUND):
+        if (isinstance(player.state, AttackState) and player.state.move_type in [MoveType.DAIR, MoveType.DSIG, MoveType.DLIGHT]):
                 # If we still have a jump
                 if player.state.jumps_left > 0:
                     # If opponent takes damage this frame
@@ -911,20 +934,20 @@ def win_reward(env: WarehouseBrawl) -> float:
     opponent: Player = env.objects["opponent"]
     
     if opponent.stocks == 0:
-        return 100000.0
+        return 1000.0 * env.dt
     return 0.0
+    
+def stay_on_stage_reward(env: WarehouseBrawl) -> float:
+    player = env.objects["player"]
+    x, y = player.body.position.x, player.body.position.y
 
-def check_stocks(env: WarehouseBrawl) -> float:
-    player: Player = env.objects["player"]
-    opponent: Player = env.objects["opponent"]
-    if opponent.stocks == 2:
-        return 25*env.dt
-    if player.stocks == 2:
-        return -25*env.dt
-    if opponent.stocks == 1:
-        return 50*env.dt
-    if player.stocks == 1:
-        return -50*env.dt
+    if (abs(x) > 6.5):
+        return -60.0 * env.dt
+    if abs(x) < 2.2:
+        return -40.0 * env.dt
+    if y > 4.2:
+        return -100.0 * env.dt
+
     
 
 '''
@@ -932,20 +955,20 @@ Add your dictionary of RewardFunctions here using RewTerms
 '''
 def gen_reward_manager():
     reward_functions = {
-        'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
+        #'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
         'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
-        'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.0),
+        #'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.0),
         'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
-        'return_to_platform_reward': RewTerm(func=return_to_platform_reward, weight=1.0),
+        #'return_to_platform_reward': RewTerm(func=return_to_platform_reward, weight=1.0),
         'spike_reward': RewTerm(func=spike_reward, weight=1.0),
         'dodge_attack_reward': RewTerm(func=dodge_attack_reward, weight=1.0),
         #'combo_reward': RewTerm(func=combo_reward, weight=1.0),
         'string_reward': RewTerm(func=string_reward, weight=1.0),
         #'combo_finisher_reward': RewTerm(func=combo_finisher_reward, weight=1.0),
         #'punish_combo_drop': RewTerm(func=punish_combo_drop, weight=1.0),
-        'self_preservation_reward': RewTerm(func=self_preservation_reward, weight=1.0),
+        #'self_preservation_reward': RewTerm(func=self_preservation_reward, weight=1.0),
         'input_spam_penalty': RewTerm(func=input_spam_penalty, weight=1.0),
         'damage_diff_reward': RewTerm(func=damage_diff_reward, weight=1.0),
         'neutral_control_reward': RewTerm(func=neutral_control_reward, weight=1.0),
@@ -954,6 +977,8 @@ def gen_reward_manager():
         'taunt_penalty': RewTerm(func=taunt_penalty, weight=1.0),
         'action_consistency_reward': RewTerm(func=action_consistency_reward, weight=1.0),
         'win_reward': RewTerm(func=win_reward, weight=1.0),
+        'stay_on_stage_reward': RewTerm(func=stay_on_stage_reward, weight=1.0),
+        'attack_right_direction_reward': RewTerm(func=attack_right_direction_reward, weight=1.0),
 
     }
     signal_subscriptions = {
@@ -992,11 +1017,11 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=1_000, # Save frequency
+        save_freq=10_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
         run_name='experiment_test',
-        mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
+        mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
     )
 
     # Set opponent settings here:
@@ -1012,6 +1037,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=40_000,
+        train_timesteps=300_000,
         train_logging=TrainLogging.PLOT
     )
