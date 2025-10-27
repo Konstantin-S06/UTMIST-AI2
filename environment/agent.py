@@ -617,17 +617,20 @@ def run_match(agent_1: Agent | partial,
 
     writer = None
     if video_path is None:
-        print("video_path=None -> Not rendering")
+        print(f"video_path=None -> Not rendering")
     else:
         print(f"video_path={video_path} -> Rendering")
-        # Initialize video writer
-        writer = skvideo.io.FFmpegWriter(video_path, outputdict={
-            '-vcodec': 'libx264',  # Use H.264 for Windows Media Player
-            '-pix_fmt': 'yuv420p',  # Compatible with both WMP & Colab
-            '-preset': 'fast',  # Faster encoding
-            '-crf': '20',  # Quality-based encoding (lower = better quality)
-            '-r': '30'  # Frame rate
-        })
+    writer = skvideo.io.FFmpegWriter(
+        video_path,
+        outputdict={
+            '-vcodec': 'libx264',
+            '-pix_fmt': 'yuv420p',
+            '-preset': 'fast',
+            '-crf': '20',
+            '-r': '30',
+            '-vf': 'transpose=1,hflip'
+        }
+    )
 
     # If partial
     if callable(agent_1):
