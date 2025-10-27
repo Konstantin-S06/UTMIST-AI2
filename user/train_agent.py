@@ -580,8 +580,6 @@ def approach_opponent_reward(env: WarehouseBrawl) -> float:
     reward = (prev_distance - current_distance) * 5.0
     return reward * env.dt
 
-    # COULD TRY CHANGING THIS TO USE VELOCITY
-
 
 def smart_attack_reward(env: WarehouseBrawl) -> float:
     """Reward attacking when the opponent is near, punish otherweise."""
@@ -606,16 +604,17 @@ def jump_recovery_reward(env: WarehouseBrawl) -> float:
     x = player.body.position.x
     vy = player.body.velocity.y
 
-    if -2.0 < x < 2.0 and vy < 0:
+    if (-2.0 < x < 2.0 or x < -7.0 or x > 7.0) and vy < 0:
         return 5.0 * env.dt
     return 0.0
 
 
 def off_screen_penalty(env: WarehouseBrawl) -> float:
+    """Penalize player for going off-screen."""
     player: Player = env.objects["player"]
     if player.body.position.y > 9.0:  # went off-screen
         return -100.0 * env.dt
-    elif abs(player.body.position.x) > 7.5:
+    elif abs(player.body.position.x) > 7:
         return -50 * env.dt
     return 0.0
 
@@ -633,12 +632,17 @@ def gen_reward_manager():
         # 'penalize_attack_reward': RewTerm(func=in_state_reward, weight=-0.04, params={'desired_state': AttackState}),
         # 'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.01),
         #'taunt_reward': RewTerm(func=in_state_reward, weight=0.2, params={'desired_state': TauntState}),
-        'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
-        'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
-        'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
-        'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
-        'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.0),
+        # Dense guidance signals
+        'map_safety_reward': RewTerm(func=map_safety_reward, weight=0.4),
+        'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=0.6),
+        'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=0.8),
+
+        # Medium-frequency rewards
+        'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=0.3),
         'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
+
+        # Strong negative feedbacks
+        'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=0.2),  # reduce weight since base penalty is huge
     }
     signal_subscriptions = {
         'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=50)),
@@ -676,10 +680,10 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=100_000, # Save frequency
+        save_freq=200_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_based',
+        run_name='experiment_based_1m',
         mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
     )
 
