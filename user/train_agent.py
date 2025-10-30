@@ -525,9 +525,9 @@ def smart_attack_reward(env: WarehouseBrawl) -> float:
 
     if is_attacking and distance <= 0.5:
         if opponent.damage_taken_this_frame > 0:
-            return opponent.damage_taken_this_frame * env.dt
+            return 1 * env.dt
         else:
-            return -0.5 * env.dt
+            return 1 * env.dt
     elif is_attacking and distance > 0.5:
         return -3.0 * env.dt
     return 0.0
@@ -594,7 +594,7 @@ def using_correct_attack_reward(env: WarehouseBrawl) -> float:
             if abs(x) < 6 and abs(x) > 3 or player.body.velocity.y == 0:
                 return 5.0 * env.dt
 
-    return -1.5 * env.dt
+    return -5.0 * env.dt
 
 def face_right_direction_reward(env: WarehouseBrawl) -> float:
     """Punish facing away from the opponent."""
@@ -669,9 +669,10 @@ def dodge_attack_reward(env: WarehouseBrawl) -> float:
     dx = player.body.position.x - opponent.body.position.x
     dy = player.body.position.y - opponent.body.position.y
     distance = math.sqrt(dx**2 + dy**2)
-    if isinstance(opponent.state, AttackState) and distance < 0.8:
-        if isinstance(player.state, DodgeState):
-            return 10.0 * env.dt
+    if isinstance(player.state, DodgeState) and distance < 0.8:
+        if isinstance(opponent.state, AttackState):
+            return 4.0 * env.dt
+        return -4.0 * env.dt
     return 0.0
 
 def combo_reward(env: WarehouseBrawl) -> float:
@@ -734,7 +735,7 @@ def string_reward(env: WarehouseBrawl) -> float:
     
     # If we hit opponent while they're in stun (can't escape)
     if opponent.damage_taken_this_frame > 0 and isinstance(opponent.state, StunState):
-        return 6.0 * env.dt
+        return 3.5 * env.dt
     
     return 0.0
 
@@ -1041,8 +1042,8 @@ def reward_heavy_attack(env: WarehouseBrawl) -> float:
     opponent = env.objects["opponent"]
     if isinstance(player.state, AttackState) and player.state.move_type in [MoveType.NSIG, MoveType.DSIG, MoveType.SSIG]:
         if opponent.damage_taken_this_frame > 0 and opponent.damage_taken_this_stock >= 45:
-            return 7.0 * env.dt
-        return -3.0 * env.dt
+            return 6.0 * env.dt
+        return -6.0 * env.dt
 
     return 0.0
 
@@ -1069,15 +1070,15 @@ def low_jump_penalty(env: WarehouseBrawl) -> float:
 
     if isinstance(player.state, InAirState):
         if hasattr(player.state, 'jumps_left') and player.state.jumps_left == 0:
-            return -6.0 * env.dt 
+            return -1.2 * env.dt 
     return 0.0
 
 def wiff_penalty(env: WarehouseBrawl) -> float:
     player = env.objects["player"]
     opponent = env.objects["opponent"]
-    if isinstance(player.state, AttackState) and opponent.damage_taken_this_frame == 0:
-        return -0.2 * env.dt 
-    return 0.0
+    if isinstance(player.state, KOState):
+        return -10.0 * env.dt
+    return 0.1 * env.dt
 
 
     
@@ -1163,8 +1164,8 @@ if __name__ == '__main__':
         save_freq=1_000_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_based_Minimal_v6',
-        mode=SaveHandlerMode.RESUME  # Save mode, FORCE or RESUME
+        run_name='experiment_based_Minimal_v7',
+        mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
     )
 
     # Set opponent settings here:
@@ -1180,6 +1181,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=33_000_000,
+        train_timesteps=20_000_000,
         train_logging=TrainLogging.PLOT
     )
