@@ -368,7 +368,7 @@ class RewardMode(Enum):
 
 def damage_interaction_reward(
     env: WarehouseBrawl,
-    mode: RewardMode = RewardMode.SYMMETRIC,
+    mode: RewardMode = RewardMode.ASYMMETRIC_DEFENSIVE
 ) -> float:
     """
     Computes the reward based on damage interactions between players.
@@ -531,7 +531,7 @@ def smart_attack_reward(env: WarehouseBrawl) -> float:
     return 0.0
 
 
-def jump_recovery_reward(env: WarehouseBrawl) -> float:
+def middle_jump_recovery_reward(env: WarehouseBrawl) -> float:
     """Reward jumping upward (negative Y velocity) if near the gap."""
     player: Player = env.objects["player"]
     x = player.body.position.x
@@ -948,7 +948,7 @@ def gen_reward_manager():
         'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
-        'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
+        'middle_jump_recovery_reward': RewTerm(func=middle_jump_recovery_reward, weight=1.0),
         'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.0),
         'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
         'return_to_platform_reward': RewTerm(func=return_to_platform_reward, weight=1.0),
@@ -1005,11 +1005,11 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=10_000, # Save frequency
+        save_freq=5_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
         run_name='experiment_test',
-        mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
+        mode=SaveHandlerMode.RESUME # Save mode, FORCE or RESUME
     )
 
     # Set opponent settings here:
