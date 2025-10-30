@@ -688,7 +688,7 @@ def combo_reward(env: WarehouseBrawl) -> float:
         player.combo_hits = 0
         player.combo_damage = 0.0
         player.last_hit_frame = -100
-    
+
     reward = 0.0
     current_frame = env.steps
     frames_since_last_hit = current_frame - player.last_hit_frame
@@ -725,6 +725,18 @@ def combo_reward(env: WarehouseBrawl) -> float:
         player.combo_damage = 0.0
     
     return reward * env.dt
+
+def recovery_reward(env: WarehouseBrawl) -> float:
+    player: Player = env.objects["player"]
+
+    y_pos = player.body.position.y
+    y_vel = player.body.velocity.y
+
+    if 2.85 < y_pos:
+        if y_vel > 0:
+            return -30.0 * env.dt
+
+    return 0.0
 
 def string_reward(env: WarehouseBrawl) -> float:
     """
@@ -1000,51 +1012,7 @@ def win_reward(env: WarehouseBrawl) -> float:
     opponent: Player = env.objects["opponent"]
     
     if opponent.stocks == 0:
-        return 30 * env.dt
-    return 0.0
-    
-def stay_on_stage_reward(env: WarehouseBrawl) -> float:
-    player = env.objects["player"]
-    x, y = player.body.position.x, player.body.position.y
-
-    if abs(x) > 6.5:
-        return -40.0 * env.dt
-    if x > 0 and y > 0.85:
-        return -15.0 * env.dt
-    if x < 0 and y > 2.85:
-        return -15.0 * env.dt
-    return 0.0
-
-def return_low_jumps_reward(env: WarehouseBrawl) -> float:
-    player = env.objects["player"]
-    x = player.body.position.x
-
-    if isinstance(player.state, InAirState):
-        if hasattr(player.state, 'jumps_left') and hasattr(player.state, 'recoveries_left') and player.state.recoveries_left + player.state.jumps_left <= 1 and (abs(x) > 7.0 or abs(x) < 2.0):
-            return -18.0 * env.dt 
-    return 0.0
-    
-def damage_dealt_reward(env: WarehouseBrawl) -> float:
-    opponent = env.objects["opponent"]
-    if isinstance(opponent.state, KOState):
-        return 12.0 * env.dt
-    return opponent.damage_taken_this_frame * env.dt
-
-def stock_loss_penalty(env: WarehouseBrawl) -> float:
-    player = env.objects["player"]
-    if player.stocks == 0:
-        return -100.0 * env.dt
-    if isinstance(player.state, KOState):
-        return -50.0 * env.dt
-    return 0.0
-def reward_heavy_attack(env: WarehouseBrawl) -> float:
-    player = env.objects["player"]
-    opponent = env.objects["opponent"]
-    if isinstance(player.state, AttackState) and player.state.move_type in [MoveType.NSIG, MoveType.DSIG, MoveType.SSIG]:
-        if opponent.damage_taken_this_frame > 0 and opponent.damage_taken_this_stock >= 45:
-            return 6.0 * env.dt
-        return -6.0 * env.dt
-
+        return 1000 * env.dt
     return 0.0
 
 def conflicting_keys_penalty(env: WarehouseBrawl) -> float:
@@ -1090,7 +1058,8 @@ Add your dictionary of RewardFunctions here using RewTerms
 '''
 def gen_reward_manager():
     reward_functions = {
-        #'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
+        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
+        'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
         #'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
@@ -1161,7 +1130,7 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=1_000_000, # Save frequency
+        save_freq=10_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
         run_name='experiment_based_Minimal_v7',
