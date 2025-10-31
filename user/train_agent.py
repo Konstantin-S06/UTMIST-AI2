@@ -308,7 +308,7 @@ class CustomAgent(Agent):
 
     def _initialize(self) -> None:
         if self.file_path is None:
-            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.02)
+            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.01)
             del self.env
         else:
             self.model = self.sb3_class.load(self.file_path)
@@ -1186,7 +1186,7 @@ if __name__ == '__main__':
         save_freq=500_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='oct30-840pm',
+        run_name='oct30-930pm',
         mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
     )
 
