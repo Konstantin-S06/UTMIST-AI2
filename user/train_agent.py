@@ -527,7 +527,7 @@ def smart_attack_reward(env: WarehouseBrawl) -> float:
         if opponent.damage_taken_this_frame > 0:
             return 2.5 * env.dt
         else:
-            return -1.8 * env.dt
+            return 1.5 * env.dt
     elif is_attacking and distance > 0.5:
         return -3.0 * env.dt
     return 0.0
@@ -566,43 +566,55 @@ def using_correct_attack_reward(env: WarehouseBrawl) -> float:
         attack_direction = "up"
     elif down:
         attack_direction = "down"
-    elif right or left:
+    elif right ^ left:
         attack_direction = "horizontal"
     else:
         attack_direction = "neutral"
 
     # Check if attack matches opponent's relative position
+    if isinstance(player.state, InAirState):
+        if dy < -0.1 and abs(dx) > 0.5:
+            if attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 6 and abs(x) > 3:
+                    return 5.5 * env.dt
+            elif attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame == 0:
+                return 1.0 * env.dt
+        elif dy < -0.1 and abs(dx) <= 0.5:  # opponent above
+            if attack_direction in ["up", "neutral"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 7 and abs(x) > 2:
+                    return 5.5 * env.dt
+            elif attack_direction in ["up", "neutral"] and opponent.damage_taken_this_frame == 0:
+                return 1.0 * env.dt
+        elif dy > 0.1 and abs(dx) > 0.5:
+            if attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 6 and abs(x) > 3:
+                    return 5.5 * env.dt
+            elif attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame == 0:
+                return 1.0 * env.dt
+        elif dy > 0.1 and abs(dx) <= 0.5:
+            if attack_direction in ["down"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 7 and abs(x) > 2:
+                    return 5.5 * env.dt
+            elif attack_direction in ["down"] and opponent.damage_taken_this_frame == 0:
+                return env.dt
+        else:  # opponent roughly at same height
+            if attack_direction in ["horizontal"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 6 and abs(x) > 3 or player.body.velocity.y == 0:
+                    return 5.5 * env.dt
+            elif attack_direction in ["horizontal"] and opponent.damage_taken_this_frame == 0:
+                return env.dt
 
-    if dy < -0.1 and abs(dx) > 0.5:
-        if attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame > 0:
-            if abs(x) < 6 and abs(x) > 3:
-                return 5.5 * env.dt
-        elif attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame == 0:
-            return 1.0 * env.dt
-    elif dy < -0.1 and abs(dx) <= 0.5:  # opponent above
-        if attack_direction in ["up"] and opponent.damage_taken_this_frame > 0:
-            if abs(x) < 7 and abs(x) > 2:
-                return 5.5 * env.dt
-        elif attack_direction in ["up"] and opponent.damage_taken_this_frame == 0:
-            return 1.0 * env.dt
-    elif dy > 0.1 and abs(dx) > 0.5:  
-        if attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame > 0:
-            if abs(x) < 6 and abs(x) > 3:
-                return 5.5 * env.dt
-        elif attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame == 0:
-            return 1.0 * env.dt
-    elif dy > 0.1 and abs(dx) > 0.5:  
-        if attack_direction in ["down"] and opponent.damage_taken_this_frame > 0:
-            if abs(x) < 7 and abs(x) > 2:
-                return 5.5 * env.dt
-        elif attack_direction in ["down"] and opponent.damage_taken_this_frame == 0:
-            return env.dt
-    else:  # opponent roughly at same height
-        if attack_direction in ["horizontal", "neutral"] and opponent.damage_taken_this_frame > 0:
-            if abs(x) < 6 and abs(x) > 3 or player.body.velocity.y == 0:
-                return 5.5 * env.dt
-        elif attack_direction in ["horizontal", "neutral"] and opponent.damage_taken_this_frame == 0:
-            return env.dt
+    elif isinstance(player.state, GroundState):
+        if dy < -0.1:
+            if attack_direction in ["neutral", "up"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 6 and abs(x) > 3:
+                    return 5.5 * env.dt
+        elif 0 < dy < 0.1:
+            if attack_direction in ["horizontal"] and opponent.damage_taken_this_frame > 0:
+                if abs(x) < 6 and abs(x) > 3 or player.body.velocity.y == 0:
+                    return 5.5 * env.dt
+            elif attack_direction in ["horizontal"] and opponent.damage_taken_this_frame == 0:
+                return env.dt
 
     return -1.0 * env.dt
 
@@ -1114,7 +1126,7 @@ def attack_frequency_reward(env: WarehouseBrawl) -> float:
         player.frames_since_attack = 0
     
     # Check if attacking
-    if player.body.position.x - opponent.body.position.x > 1.0:
+    if abs(player.body.position.x - opponent.body.position.x) > 1.0:
         return 0.0
     
     if isinstance(player.state, AttackState):
@@ -1141,8 +1153,8 @@ Add your dictionary of RewardFunctions here using RewTerms
 '''
 def gen_reward_manager():
     reward_functions = {
-        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
-        'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
+        #'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
+        #'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
         #'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
@@ -1234,6 +1246,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=5_000_000,
+        train_timesteps=10_000_000,
         train_logging=TrainLogging.PLOT
     )
