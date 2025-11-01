@@ -6,7 +6,7 @@ from stable_baselines3 import PPO
 import pygame
 pygame.init()
 
-trained_model_path = "checkpoints/oct30-1120pm/rl_model_2000700_steps.zip"
+trained_model_path = "checkpoints/passive-nov1-715pm/rl_model_1004400_steps.zip"
 my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor, file_path=trained_model_path)
 
 #Input your file path here in SubmittedAgent if you are loading a model:
