@@ -308,7 +308,7 @@ class CustomAgent(Agent):
 
     def _initialize(self) -> None:
         if self.file_path is None:
-            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.01)
+            self.model = self.sb3_class("MlpPolicy", self.env, policy_kwargs=self.extractor.get_policy_kwargs(), verbose=0, n_steps=30*90*3, batch_size=128, ent_coef=0.007)
             del self.env
         else:
             self.model = self.sb3_class.load(self.file_path)
@@ -619,9 +619,21 @@ def return_to_platform_reward(env: WarehouseBrawl) -> float:
     """Reward staying above or on the main platforms."""
     player: Player = env.objects["player"]
     x = player.body.position.x
-    if (-7.0 < x < -2.0) or (2.0 < x < 7.0) or (player.body.velocity.y <= 0 and abs(x) < 2.0) and player.body.position.y > -4.0:
+    y = player.body.position.y
+    vx = player.body.velocity.x
+    vy = player.body.velocity.y
+
+    if (-7.0 < x < -2.0) or (2.0 < x < 7.0) and y > -4.0:
         return env.dt
-    elif abs(x) >= 7.0:
+    elif 0.0 < x <= 2.0 and vy <= 0.0 and vx > 0.2:
+        return env.dt
+    elif -2.0 <= x <= 0.0 and vy <= 0.0 and vx < -0.2:
+        return env.dt
+    elif x >= 7.0 and vy <= 0.0 and vx < -0.2:
+        return env.dt
+    elif x <= -7.0 and vy >= 0.0 and vx > 0.2:
+        return env.dt
+    elif abs(x) >= 7.0 or y > 3.0:
         return -6.0 * env.dt
     else:
         return -3.0 * env.dt
@@ -816,6 +828,8 @@ def approach_opponent_reward(env: WarehouseBrawl) -> float:
     if not isinstance(opponent.state, KOState):
         if player.damage_taken_this_stock < 50:
             if (xo < 6.8 and xo > 1.8 and xp < 6.8 and xp > 1.8) or (xo > -6.8 and xo < -1.8 and xp > -6.8 and xp < -1.8):
+                # if abs(xp) >= 7 or abs(xo) >= 7:
+                #     return -3.0 * env.dt
                 if (xo > xp and player.body.velocity.x > 0) or abs(xp-xo) < 0.5:
                     return 3.0 * env.dt
                 if (xo < xp and player.body.velocity.x < 0) or abs(xp-xo) < 0.5:
@@ -1094,7 +1108,7 @@ def attack_frequency_reward(env: WarehouseBrawl) -> float:
         player.frames_since_attack = 0
 
     # Check if attacking
-    if player.body.position.x - opponent.body.position.x > 1.0:
+    if abs(player.body.position.x - opponent.body.position.x) > 1.0:
         return 0.0
 
     if isinstance(player.state, AttackState):
@@ -1132,7 +1146,6 @@ def gen_reward_manager():
         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=0.9),
         'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.2),
         'return_to_platform_reward': RewTerm(func=return_to_platform_reward, weight=0.8),
-        'recovery_reward': RewTerm(func=recovery_reward, weight=0.8),
 
         # --- Defense & Survival ---
         'dodge_attack_reward': RewTerm(func=dodge_attack_reward, weight=1.4),
@@ -1186,7 +1199,7 @@ if __name__ == '__main__':
         save_freq=500_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='oct30-930pm',
+        run_name='oct31-1025pm',
         mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
     )
 
@@ -1203,6 +1216,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=2_000_000,
+        train_timesteps=20_000_000,
         train_logging=TrainLogging.PLOT
     )

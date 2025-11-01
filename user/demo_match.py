@@ -6,7 +6,7 @@ from stable_baselines3 import PPO
 import pygame
 pygame.init()
 
-trained_model_path = "checkpoints/oct30-930pm/rl_model_2000700_steps.zip"
+trained_model_path = "checkpoints/oct30-1120pm/rl_model_2000700_steps.zip"
 my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor, file_path=trained_model_path)
 
 #Input your file path here in SubmittedAgent if you are loading a model:
@@ -21,4 +21,18 @@ run_match(
     max_timesteps=30 * match_time,  # Match time in frames (adjust as needed)
     resolution=CameraResolution.LOW,
     video_path='t1.mp4'
+)
+run_match(
+    agent_1=my_agent,
+    agent_2=opponent,
+    max_timesteps=30 * match_time,  # Match time in frames (adjust as needed)
+    resolution=CameraResolution.LOW,
+    video_path='t2.mp4'
+)
+run_match(
+    agent_1=my_agent,
+    agent_2=opponent,
+    max_timesteps=30 * match_time,  # Match time in frames (adjust as needed)
+    resolution=CameraResolution.LOW,
+    video_path='t3.mp4'
 )
