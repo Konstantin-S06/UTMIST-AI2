@@ -631,7 +631,7 @@ def run_match(agent_1: Agent | partial,
             '-r': '30',
             '-vf': 'transpose=1,hflip'
         }
-    )
+        )
 
     # If partial
     if callable(agent_1):

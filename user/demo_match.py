@@ -5,7 +5,7 @@ from user.my_agent import SubmittedAgent
 import pygame
 pygame.init()
 
-my_agent = UserInputAgent()
+my_agent = BasedAgent()
 
 #NOTE: Input your file path here in SubmittedAgent if you are loading a model:
 opponent = SubmittedAgent()

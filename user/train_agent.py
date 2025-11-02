@@ -402,7 +402,7 @@ def damage_interaction_reward(
     else:
         raise ValueError(f"Invalid mode: {mode}")
 
-    return reward / 140
+    return reward /140
 
 
 # In[ ]:
@@ -525,11 +525,11 @@ def smart_attack_reward(env: WarehouseBrawl) -> float:
 
     if is_attacking and distance <= 0.5:
         if opponent.damage_taken_this_frame > 0:
-            return 2.5 * env.dt
+            return 4.0 * env.dt + opponent.damage_taken_this_frame * 0.5 * env.dt
         else:
-            return -1.8 * env.dt
-    elif is_attacking and distance > 0.5:
-        return -3.0 * env.dt
+            return -2 * env.dt
+    elif is_attacking and distance > 1:
+        return -4.0 * env.dt
     return 0.0
 
 
@@ -574,16 +574,16 @@ def using_correct_attack_reward(env: WarehouseBrawl) -> float:
     # Check if attack matches opponent's relative position
 
     if dy < -0.1 and abs(dx) > 0.5:
-        if attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame > 0:
+        if attack_direction in ["diagonal_up_right", "diagonal_up_left", "neutral"] and opponent.damage_taken_this_frame > 0:
             if abs(x) < 6 and abs(x) > 3:
                 return 5.5 * env.dt
-        elif attack_direction in ["diagonal_up_right", "diagonal_up_left"] and opponent.damage_taken_this_frame == 0:
+        elif attack_direction in ["diagonal_up_right", "diagonal_up_left", "neutral"] and opponent.damage_taken_this_frame == 0:
             return 1.0 * env.dt
     elif dy < -0.1 and abs(dx) <= 0.5:  # opponent above
-        if attack_direction in ["up"] and opponent.damage_taken_this_frame > 0:
+        if attack_direction in ["up", "neutral"] and opponent.damage_taken_this_frame > 0:
             if abs(x) < 7 and abs(x) > 2:
                 return 5.5 * env.dt
-        elif attack_direction in ["up"] and opponent.damage_taken_this_frame == 0:
+        elif attack_direction in ["up", "neutral"] and opponent.damage_taken_this_frame == 0:
             return 1.0 * env.dt
     elif dy > 0.1 and abs(dx) > 0.5:  
         if attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame > 0:
@@ -591,7 +591,7 @@ def using_correct_attack_reward(env: WarehouseBrawl) -> float:
                 return 5.5 * env.dt
         elif attack_direction in ["diagonal_down_right", "diagonal_down_left"] and opponent.damage_taken_this_frame == 0:
             return 1.0 * env.dt
-    elif dy > 0.1 and abs(dx) > 0.5:  
+    elif dy > 0.1 and abs(dx) <= 0.5:  
         if attack_direction in ["down"] and opponent.damage_taken_this_frame > 0:
             if abs(x) < 7 and abs(x) > 2:
                 return 5.5 * env.dt
@@ -601,7 +601,7 @@ def using_correct_attack_reward(env: WarehouseBrawl) -> float:
         if attack_direction in ["horizontal", "neutral"] and opponent.damage_taken_this_frame > 0:
             if abs(x) < 6 and abs(x) > 3 or player.body.velocity.y == 0:
                 return 5.5 * env.dt
-        elif attack_direction in ["horizontal", "neutral"] and opponent.damage_taken_this_frame == 0:
+        elif attack_direction in ["horizontal"] and opponent.damage_taken_this_frame == 0:
             return env.dt
 
     return -1.0 * env.dt
@@ -641,10 +641,28 @@ def return_to_platform_reward(env: WarehouseBrawl) -> float:
     x = player.body.position.x
     if (-7.0 < x < -2.0) or (2.0 < x < 7.0) or (player.body.velocity.y <= 0 and abs(x) < 2.0) and player.body.position.y > -4.0:
         return env.dt
+    elif player.damage_taken_this_stock > 50:
+        return -5.0 * env.dt
     elif abs(x) >= 7.0:
-        return -6.0 * env.dt
-    else:
         return -3.0 * env.dt
+    else:
+        return -2.0 * env.dt
+    
+def return_to_platform_gentle(env: WarehouseBrawl) -> float:
+    """Gentle encouragement to stay on platforms."""
+    player: Player = env.objects["player"]
+    x = player.body.position.x
+    y = player.body.position.y
+    
+    # Small reward for being on main platforms
+    if (-7.0 < x < -2.0 and y < 2.5  and y > -4.0) or (2.0 < x < 7.0 and y < 2.5 and y > -4.0):
+        return 1.0 * env.dt
+    else:
+        return -5.0 * env.dt
+    
+    
+    # NO PENALTY for normal off-platform play!
+    return 0.0
 
 def spike_reward(env: WarehouseBrawl) -> float:
     """Rewards spiking opponents when theyre off the platform."""
@@ -684,7 +702,7 @@ def dodge_attack_reward(env: WarehouseBrawl) -> float:
             if isinstance(player.state, InAirState):
                 return 1.5 * env.dt
             return 4.0 * env.dt
-        return -3.0 * env.dt
+        return -1.0 * env.dt
     return 0.0
 
 def combo_reward(env: WarehouseBrawl) -> float:
@@ -759,7 +777,7 @@ def string_reward(env: WarehouseBrawl) -> float:
     
     # If we hit opponent while they're in stun (can't escape)
     if opponent.damage_taken_this_frame > 0 and isinstance(opponent.state, StunState):
-        return 2 * env.dt
+        return 1 * env.dt
     
     return 0.0
 
@@ -834,14 +852,13 @@ def approach_opponent_reward(env: WarehouseBrawl) -> float:
         return -3.0 * env.dt
 
     if not isinstance(opponent.state, KOState):
-        if player.damage_taken_this_stock < 50:
-            if (xo < 6.8 and xo > 1.8 and xp < 6.8 and xp > 1.8) or (xo > -6.8 and xo < -1.8 and xp > -6.8 and xp < -1.8):
-                if (xo > xp and player.body.velocity.x > 0) or abs(xp-xo) < 0.5:
-                    return 3.0 * env.dt
-                if (xo < xp and player.body.velocity.x < 0) or abs(xp-xo) < 0.5:
-                    return 3.0 * env.dt
-                if yo < yp and player.body.velocity.y < 0 and opponent.body.velocity.y < 0:
-                    return 3.0 * env.dt
+        if abs(xo) < 7.0:
+            if (xo > xp and player.body.velocity.x > 0) or abs(xp-xo) < 0.5:
+                return 3.0 * env.dt
+            if (xo < xp and player.body.velocity.x < 0) or abs(xp-xo) < 0.5:
+                return 3.0 * env.dt
+            if yo < yp and player.body.velocity.y < 0 and opponent.body.velocity.y < 0:
+                return 3.0 * env.dt
     return 0.0
 
 
@@ -994,9 +1011,9 @@ def taunt_and_drop_penalty(env: WarehouseBrawl) -> float:
     keys = player.input.key_status
 
     if keys["h"].held:
-        return -5.0 * env.dt
+        return -10.0 * env.dt
     if keys["g"].held:
-        return -5.0 * env.dt
+        return -10.0 * env.dt
     return 0.0
 
 def action_consistency_reward(env: WarehouseBrawl) -> float:
@@ -1050,9 +1067,7 @@ def return_low_jumps_reward(env: WarehouseBrawl) -> float:
     
 def damage_dealt_reward(env: WarehouseBrawl) -> float:
     opponent = env.objects["opponent"]
-    if isinstance(opponent.state, KOState):
-        return 12.0 * env.dt
-    return opponent.damage_taken_this_frame * env.dt
+    return opponent.damage_taken_this_frame * env.dt 
 
 def stock_loss_penalty(env: WarehouseBrawl) -> float:
     player = env.objects["player"]
@@ -1065,9 +1080,8 @@ def reward_heavy_attack(env: WarehouseBrawl) -> float:
     player = env.objects["player"]
     opponent = env.objects["opponent"]
     if isinstance(player.state, AttackState) and player.state.move_type in [MoveType.NSIG, MoveType.DSIG, MoveType.SSIG]:
-        if opponent.damage_taken_this_frame > 0 and opponent.damage_taken_this_stock >= 45:
-            return 6.0 * env.dt
-        return -4.0 * env.dt
+        if opponent.damage_taken_this_frame > 0 and opponent.damage_taken_this_stock >= 55:
+            return 3.0 * env.dt
 
     return 0.0
 
@@ -1105,135 +1119,418 @@ def wiff_penalty(env: WarehouseBrawl) -> float:
     return 0.0
 
 def attack_frequency_reward(env: WarehouseBrawl) -> float:
-    """Reward attacking regularly, punish excessive passivity."""
+    """Reward attacking when close to opponent."""
     player: Player = env.objects["player"]
-    opponent = env.objects["opponent"]
+    opponent: Player = env.objects["opponent"]
     
-    # Initialize tracking
+    # Proper distance check
+    distance = math.sqrt(
+        (player.body.position.x - opponent.body.position.x)**2 +
+        (player.body.position.y - opponent.body.position.y)**2
+    )
+    
+    if distance > 1.5:
+        return 0.0
+    
     if not hasattr(player, 'frames_since_attack'):
         player.frames_since_attack = 0
     
-    # Check if attacking
-    if player.body.position.x - opponent.body.position.x > 1.0:
-        return 0.0
-    
     if isinstance(player.state, AttackState):
         player.frames_since_attack = 0
-        return 1.5 * env.dt  # Small reward for attacking
+        return 1.0 * env.dt  # Reduced from 1.5
     else:
         player.frames_since_attack += 1
     
-    # Punish long periods without attacking
-    if player.frames_since_attack > 90:  # 3 seconds at 30fps
-        return -5.0 * env.dt
-    elif player.frames_since_attack > 60:  # 2 seconds
-        return -2.0 * env.dt
+    if player.frames_since_attack > 90:
+        return -3.0 * env.dt  # Reduced from -2.0 but still significant
+    
+    return 0.0
+
+def self_destruct_penalty(env: WarehouseBrawl) -> float:
+    """Heavy penalty for dying without opponent dealing much damage."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    if isinstance(player.state, KOState):
+        return -12.0 * env.dt
+    
+    return 0.0
+    
+def parry_god_reward(env: WarehouseBrawl) -> float:
+    """Perfect dodge timing, then punish hard."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    # Initialize tracking
+    if not hasattr(player, 'parry_state'):
+        player.parry_state = {
+            'just_dodged': False,
+            'dodge_frame': -100,
+            'punish_window_active': False
+        }
+    
+    state = player.parry_state
+    current_frame = env.steps
+    
+    distance = math.sqrt(
+        (player.body.position.x - opponent.body.position.x)**2 +
+        (player.body.position.y - opponent.body.position.y)**2
+    )
+    
+    reward = 0.0
+    
+    # PHASE 1: Opponent is attacking - DODGE NOW
+    if isinstance(opponent.state, AttackState) and distance < 1.2:
+        if isinstance(player.state, DodgeState):
+            reward += 20.0 * env.dt  # HUGE reward for dodging during attack
+            state['just_dodged'] = True
+            state['dodge_frame'] = current_frame
+            state['punish_window_active'] = True
+        elif not isinstance(player.state, DodgeState):
+            # You should be dodging!
+            reward -= 10.0 * env.dt
+    
+    # PHASE 2: Just dodged - PUNISH NOW (15 frame window)
+    frames_since_dodge = current_frame - state['dodge_frame']
+    if state['punish_window_active'] and frames_since_dodge < 15:
+        if isinstance(player.state, AttackState):
+            reward += 30.0 * env.dt  # MASSIVE reward for punish
+            
+            # Extra bonus if we hit
+            if opponent.damage_taken_this_frame > 0:
+                reward += 50.0 * env.dt  # JACKPOT!
+                state['punish_window_active'] = False  # Reset after successful punish
+        else:
+            # You have a punish window, USE IT!
+            reward += 5.0 * env.dt  # Small reward for being ready
+    elif frames_since_dodge >= 15:
+        state['punish_window_active'] = False
+    
+    # PHASE 3: Neutral game - Stay defensive, bait attacks
+    if not isinstance(opponent.state, AttackState) and not state['punish_window_active']:
+        # Stay at mid range (baiting distance)
+        if 1.5 < distance < 3.0:
+            reward += 8.0 * env.dt  # Good spacing
+        
+        # DON'T attack randomly - wait for them
+        if isinstance(player.state, AttackState):
+            reward -= 15.0 * env.dt  # Punish random attacks
+        
+        # Stay grounded and ready
+        if player.is_on_floor() and isinstance(player.state, StandingState):
+            reward += 3.0 * env.dt
+    
+    return reward
+
+
+def timeout_runner_reward(env: WarehouseBrawl) -> float:
+    """When ahead, run away and stall."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    px, py = player.body.position.x, player.body.position.y
+    ox, oy = opponent.body.position.x, opponent.body.position.y
+    
+    # Calculate if we're winning
+    stock_advantage = player.stocks - opponent.stocks
+    damage_advantage = opponent.damage_taken_this_stock - player.damage_taken_this_stock
+    
+    # Are we ahead?
+    winning = stock_advantage > 0 or \
+              (stock_advantage == 0 and damage_advantage > 30)
+    
+    if not winning:
+        return 0.0  # Don't run if not winning
+    
+    reward = 0.0
+    horizontal_distance = abs(px - ox)
+    
+    # MAXIMIZE distance from opponent
+    if horizontal_distance > 4.0:
+        reward += 15.0 * env.dt  # HUGE reward for staying far
+    elif horizontal_distance > 3.0:
+        reward += 8.0 * env.dt
+    elif horizontal_distance < 2.0:
+        reward -= 10.0 * env.dt  # Penalty for being close
+    
+    # Actively move AWAY from opponent
+    moving_away = (px < ox and player.body.velocity.x < 0) or \
+                  (px > ox and player.body.velocity.x > 0)
+    
+    if moving_away:
+        reward += 10.0 * env.dt
+    else:
+        reward -= 5.0 * env.dt  # You should be running!
+    
+    # NEVER attack when running away
+    if isinstance(player.state, AttackState):
+        reward -= 30.0 * env.dt  # Heavy penalty
+    
+    # Use platforms to your advantage (higher is safer)
+    if py < 1.0:  # On a high platform
+        reward += 5.0 * env.dt
+    
+    # If opponent is chasing, lead them into bad positions
+    if ox > 6.5 or ox < -6.5:  # Opponent near edge
+        if horizontal_distance > 3.0:  # And we're safe
+            reward += 10.0 * env.dt  # They're in danger, we're not
+    
+    return reward
+
+
+def adaptive_gameplan_reward(env: WarehouseBrawl) -> float:
+    """Switches between Parry God and Timeout King based on game state."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    stock_advantage = player.stocks - opponent.stocks
+    damage_advantage = opponent.damage_taken_this_stock - player.damage_taken_this_stock
+    
+    # Winning condition: up a stock OR up 30%+ damage
+    winning = stock_advantage > 0 or \
+              (stock_advantage == 0 and damage_advantage > 30)
+    
+    if winning:
+        # RUN AWAY MODE
+        return timeout_runner_reward(env)
+    else:
+        # PARRY GOD MODE
+        return parry_god_reward(env)
+
+
+def defensive_positioning_reward(env: WarehouseBrawl) -> float:
+    """Stay in safe positions with escape routes."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    px, py = player.body.position.x, player.body.position.y
+    
+    reward = 0.0
+    
+    # Prefer main platforms (safe positions)
+    if (-6.5 < px < -2.5) or (2.5 < px < 6.5):
+        if py < 1.0:  # On platform, not in air
+            reward += 5.0 * env.dt
+    
+    # Avoid corners (can't escape)
+    if abs(px) > 6.8:
+        reward -= 8.0 * env.dt
+    
+    # Avoid center gap (can fall through)
+    if -2.0 < px < 2.0 and py > 0.5:
+        reward -= 10.0 * env.dt
+    
+    # Face opponent (ready to react)
+    dx = opponent.body.position.x - px
+    facing_opponent = (dx > 0 and player.facing == Facing.RIGHT) or \
+                     (dx < 0 and player.facing == Facing.LEFT)
+    
+    if facing_opponent:
+        reward += 2.0 * env.dt
+    
+    return reward
+
+
+def punish_aggression_reward(env: WarehouseBrawl) -> float:
+    """Extra reward for making opponent pay for attacking."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
+    
+    # If opponent whiffed an attack (they attacked, we didn't get hit)
+    if isinstance(opponent.state, AttackState):
+        if player.damage_taken_this_frame == 0:
+            # They missed! Capitalize!
+            if isinstance(player.state, AttackState):
+                if opponent.damage_taken_this_frame > 0:
+                    # We punished their whiff!
+                    return 40.0 * env.dt
     
     return 0.0
 
 
+def never_attack_first_reward(env: WarehouseBrawl) -> float:
+    """Punish throwing out attacks without opponent committing first."""
+    player: Player = env.objects["player"]
+    opponent: Player = env.objects["opponent"]
     
-
+    # Are we winning (should be running away)?
+    stock_advantage = player.stocks - opponent.stocks
+    damage_advantage = opponent.damage_taken_this_stock - player.damage_taken_this_stock
+    winning = stock_advantage > 0 or (stock_advantage == 0 and damage_advantage > 30)
     
+    if winning:
+        return 0.0  # timeout_runner handles this
+    
+    # In neutral, don't attack unless opponent is committed
+    if isinstance(player.state, AttackState):
+        if not isinstance(opponent.state, AttackState):
+            # We attacked while they're neutral - BAD
+            return -12.0 * env.dt
+    
+    return 0.0
 
-'''
-Add your dictionary of RewardFunctions here using RewTerms
-'''
+
+# ===== UPDATED GEN_REWARD_MANAGER =====
+
 def gen_reward_manager():
     reward_functions = {
-        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
-        'map_safety_reward': RewTerm(func=map_safety_reward, weight=1.0),
-        'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1.0),
-        'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1.0),
-        #'jump_recovery_reward': RewTerm(func=jump_recovery_reward, weight=1.0),
-        #'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.0),
-        #'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
-        'return_to_platform_reward': RewTerm(func=return_to_platform_reward, weight=1.0),
-        #'spike_reward': RewTerm(func=spike_reward, weight=1.0),
-        'dodge_attack_reward': RewTerm(func=dodge_attack_reward, weight=1.0),
-        #'combo_reward': RewTerm(func=combo_reward, weight=1.0),
-        'string_reward': RewTerm(func=string_reward, weight=1.0),
-        #'combo_finisher_reward': RewTerm(func=combo_finisher_reward, weight=1.0),
-        #'punish_combo_drop': RewTerm(func=punish_combo_drop, weight=1.0),
-        #'self_preservation_reward': RewTerm(func=self_preservation_reward, weight=1.0),
-        #'input_spam_penalty': RewTerm(func=input_spam_penalty, weight=1.0),
-        #'damage_diff_reward': RewTerm(func=damage_diff_reward, weight=1.0),
-        #'neutral_control_reward': RewTerm(func=neutral_control_reward, weight=1.0),
-        #'punish_window_reward': RewTerm(func=punish_window_reward, weight=1.0),
+        # ===== CORE STRATEGY (Highest Priority) =====
+        'adaptive_gameplan': RewTerm(func=adaptive_gameplan_reward, weight=1.0),  # Switches modes
+        
+        # ===== SUPPORTING REWARDS =====
+        'defensive_positioning': RewTerm(func=defensive_positioning_reward, weight=0.8),
+        'punish_aggression': RewTerm(func=punish_aggression_reward, weight=1.0),
+        'never_attack_first': RewTerm(func=never_attack_first_reward, weight=0.6),
+        
+        # ===== DAMAGE FEEDBACK (Moderate) =====
+        'damage_dealt_reward': RewTerm(func=damage_dealt_reward, weight=3.0),
+        'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=2.0),
+        'combo_reward': RewTerm(func=combo_reward, weight=1.5),
+        
+        # ===== SAFETY (Important) =====
+        'return_to_platform_gentle': RewTerm(func=return_to_platform_gentle, weight=2.0),
+        'off_screen_penalty': RewTerm(func=off_screen_penalty, weight=1.5),
+        
+        # ===== MINOR SHAPING =====
+        'face_right_direction_reward': RewTerm(func=face_right_direction_reward, weight=0.2),
         'taunt_and_drop_penalty': RewTerm(func=taunt_and_drop_penalty, weight=1.0),
-        #'action_consistency_reward': RewTerm(func=action_consistency_reward, weight=1.0),
-        #'win_reward': RewTerm(func=win_reward, weight=1.0),
-        #'stay_on_stage_reward': RewTerm(func=stay_on_stage_reward, weight=1.0),
-        #'damage_dealt_reward': RewTerm(func=damage_dealt_reward, weight=1.0),
-        #'return_low_jumps_reward': RewTerm(func=return_low_jumps_reward, weight=1.0),
-        #'stock_loss_penalty': RewTerm(func=stock_loss_penalty, weight=1.0),
-        'using_correct_attack_reward': RewTerm(func=using_correct_attack_reward, weight=1.0),
-        'face_right_direction_reward': RewTerm(func=face_right_direction_reward, weight=1.0),
-        'reward_heavy_attack': RewTerm(func=reward_heavy_attack, weight=1.0),
-        'conflicting_keys_penalty': RewTerm(func=conflicting_keys_penalty, weight=1.0),
-        #'low_jump_penalty': RewTerm(func=low_jump_penalty, weight=1.0),
-        'wiff_penalty': RewTerm(func=wiff_penalty, weight=1.0),
-        'attack_frequency_reward': RewTerm(func=attack_frequency_reward, weight=1.0),
-
-
-
     }
+    
     signal_subscriptions = {
-        'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=40)),
-        'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=15)),
-        # 'on_combo_reward': ('hit_during_stun', RewTerm(func=on_combo_reward, weight=5)),
-        'on_equip_reward': ('weapon_equip_signal', RewTerm(func=on_equip_reward, weight=1)),
-        # 'on_drop_reward': ('weapon_drop_signal', RewTerm(func=on_drop_reward, weight=15))
+        'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=500)),
+        'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=80)),
+        'on_equip_reward': ('weapon_equip_signal', RewTerm(func=on_equip_reward, weight=10)),
     }
+    
     return RewardManager(reward_functions, signal_subscriptions)
 
-# -------------------------------------------------------------------------
-# ----------------------------- MAIN FUNCTION -----------------------------
-# -------------------------------------------------------------------------
-'''
-The main function runs training. You can change configurations such as the Agent type or opponent specifications here.
-'''
+
+# ===== TRAINING CONFIGURATION =====
+
 if __name__ == '__main__':
-    # Create agent
+    # Start fresh
     my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor)
-
-    # Start here if you want to train from scratch. e.g:
-    #my_agent = RecurrentPPOAgent()
-
-    # Start here if you want to train from a specific timestep. e.g:
-    #my_agent = RecurrentPPOAgent(file_path='checkpoints/experiment_3/rl_model_120006_steps.zip')
-
+    
     # Reward manager
     reward_manager = gen_reward_manager()
-    # Self-play settings
-    selfplay_handler = SelfPlayRandom(
-        partial(type(my_agent)), # Agent class and its keyword arguments
-                                 # type(my_agent) = Agent class
-    )
-
-    # Set save settings here:
+    
+    # Self-play handler
+    selfplay_handler = SelfPlayRandom(partial(type(my_agent)))
+    
+    # Save settings
     save_handler = SaveHandler(
-        agent=my_agent, # Agent to save
-        save_freq=500_000, # Save frequency
-        max_saved=40, # Maximum number of saved models
-        save_path='checkpoints', # Save path
-        run_name='experiment_based_Minimal_v9',
-        mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
+        agent=my_agent,
+        save_freq=200_000,
+        max_saved=40,
+        save_path='checkpoints',
+        run_name='parry_god_timeout_king_2',
+        mode=SaveHandlerMode.FORCE
     )
-
-    # Set opponent settings here:
+    
+    # Opponent mix: Focus on learning to counter aggressive play
     opponent_specification = {
-                    'self_play': (8, selfplay_handler),
-                    'constant_agent': (0, partial(ConstantAgent)),
-                    'based_agent': (2, partial(BasedAgent)),
-                }
+        'self_play': (3, selfplay_handler),      # 30% - learn to fight yourself
+        'based_agent': (7, partial(BasedAgent)), # 70% - master the basics
+    }
     opponent_cfg = OpponentsCfg(opponents=opponent_specification)
-
+    
     train(my_agent,
         reward_manager,
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=5_000_000,
+        train_timesteps=3_000_000,
         train_logging=TrainLogging.PLOT
     )
+    
+
+# '''
+# Add your dictionary of RewardFunctions here using RewTerms
+# '''
+# def gen_reward_manager():
+#     reward_functions = {
+
+#         'approach_opponent_reward': RewTerm(func=approach_opponent_reward, weight=1),
+#         'smart_attack_reward': RewTerm(func=smart_attack_reward, weight=1),
+
+#         #'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=3),
+
+
+#         'string_reward': RewTerm(func=string_reward, weight=1.0),
+
+#         'taunt_and_drop_penalty': RewTerm(func=taunt_and_drop_penalty, weight=1.0),
+
+
+
+#         'face_right_direction_reward': RewTerm(func=face_right_direction_reward, weight=1),
+
+
+
+#         'attack_frequency_reward': RewTerm(func=attack_frequency_reward, weight=1),
+#         'return_to_platform_gentle': RewTerm(func=return_to_platform_gentle, weight=2),
+#         'self_destruct_penalty': RewTerm(func=self_destruct_penalty, weight=1),
+
+
+
+#     }
+#     signal_subscriptions = {
+#         'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=150)),
+#         'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=30)),
+#         # 'on_combo_reward': ('hit_during_stun', RewTerm(func=on_combo_reward, weight=5)),
+#         'on_equip_reward': ('weapon_equip_signal', RewTerm(func=on_equip_reward, weight=10)),
+#         # 'on_drop_reward': ('weapon_drop_signal', RewTerm(func=on_drop_reward, weight=15))
+#     }
+#     return RewardManager(reward_functions, signal_subscriptions)
+
+# # -------------------------------------------------------------------------
+# # ----------------------------- MAIN FUNCTION -----------------------------
+# # -------------------------------------------------------------------------
+# '''
+# The main function runs training. You can change configurations such as the Agent type or opponent specifications here.
+# '''
+# if __name__ == '__main__':
+#     # Create agent
+#     my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor)
+
+#     # Start here if you want to train from scratch. e.g:
+#     #my_agent = RecurrentPPOAgent()
+
+#     # Start here if you want to train from a specific timestep. e.g:
+#     #my_agent = RecurrentPPOAgent(file_path='checkpoints/experiment_3/rl_model_120006_steps.zip')
+
+#     # Reward manager
+#     reward_manager = gen_reward_manager()
+#     # Self-play settings
+#     selfplay_handler = SelfPlayRandom(
+#         partial(type(my_agent)), # Agent class and its keyword arguments
+#                                  # type(my_agent) = Agent class
+#     )
+
+#     # Set save settings here:
+#     save_handler = SaveHandler(
+#         agent=my_agent, # Agent to save
+#         save_freq=1_000_000, # Save frequency
+#         max_saved=40, # Maximum number of saved models
+#         save_path='checkpoints', # Save path
+#         run_name='experiment_based_Minimal_v17',
+#         mode=SaveHandlerMode.FORCE  # Save mode, FORCE or RESUME
+#     )
+
+#     # Set opponent settings here:
+#     opponent_specification = {
+#                     'self_play': (2, selfplay_handler),
+#                     'SB3_agent': (2, partial(SB3Agent)),
+#                     'clockwork_agent': (2, partial(ClockworkAgent)),
+#                     'based_agent': (2, partial(BasedAgent)),
+#                     'RecurrentPPO_agent': (2, partial(RecurrentPPOAgent)),
+#                 }
+#     opponent_cfg = OpponentsCfg(opponents=opponent_specification)
+
+#     train(my_agent,
+#         reward_manager,
+#         save_handler,
+#         opponent_cfg,
+#         CameraResolution.LOW,
+#         train_timesteps=6_000_000,
+#         train_logging=TrainLogging.PLOT
+#     )

@@ -32,7 +32,7 @@ class SubmittedAgent(Agent):
     '''
     def __init__(
         self,
-        file_path: Optional[str] = None,
+        file_path: Optional[str] = "checkpoints\\parry_god_timeout_king\\rl_model_1004400_steps.zip",
     ):
         super().__init__(file_path)
 
@@ -60,7 +60,7 @@ class SubmittedAgent(Agent):
         if not os.path.isfile(data_path):
             print(f"Downloading {data_path}...")
             # Place a link to your PUBLIC model data here. This is where we will download it from on the tournament server.
-            url = "https://drive.google.com/file/d/1JIokiBOrOClh8piclbMlpEEs6mj3H1HJ/view?usp=sharing"
+            url = "https://drive.google.com/file/d/1QVJ4i5oO9giBg1fc1ELmKmRqkG1DptOE/view?usp=sharing"
             gdown.download(url, output=data_path, fuzzy=True)
         return data_path
 

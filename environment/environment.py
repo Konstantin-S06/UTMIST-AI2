@@ -666,7 +666,7 @@ class Camera():
         env.handle_ui(self.canvas)
 
         self.ui_handler.render(self, env)
-
+        
         if hasattr(env, 'cur_action'):
             self.key_panel_1.draw(self, env.cur_action[0])
             self.key_panel_2.draw(self, env.cur_action[1])
@@ -674,6 +674,8 @@ class Camera():
         img = np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.canvas)), axes=(1, 0, 2)
             )
+        # img = np.rot90(img, k=-1)
+        # img = np.fliplr(img)  
 
         # img = np.array(pygame.surfarray.pixels3d(self.canvas)).swapaxes(0, 1)[:, ::-1, :]
         # img = np.rot90(img, k=1)  
